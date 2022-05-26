@@ -1,0 +1,16 @@
+version: '3.9'
+services:
+  lenv:
+    image: xanmarta/lenv:podman
+    volumes:
+      - lenv_data:/data
+      - lenv_containers_1:/var/lib/containers
+      - lenv_containers_2:/home/user/.local/share/containers
+    environment:
+      - PUBLIC_KEY=${PUBLIC_KEY}
+    privileged: true
+
+volumes:
+  lenv_data: {}
+  lenv_containers_1: {}
+  lenv_containers_2: {}
