@@ -12,16 +12,33 @@ RUN apt-get update -y && \
 # Podman setup
 
 RUN useradd -m -s /bin/bash user && usermod -aG sudo user && echo user:password | chpasswd; \
-    echo -e "user:1:999\nuser:1001:10000" > /etc/subuid; \
-    echo -e "user:1:999\nuser:1001:10000" > /etc/subgid;
+    echo "user:1:999\nuser:1001:64535" > /etc/subuid; \
+    echo "user:1:999\nuser:1001:64535" > /etc/subgid;
 
-ADD https://raw.githubusercontent.com/containers/podman/main/contrib/podmanimage/stable/containers.conf /etc/containers/containers.conf
-ADD https://raw.githubusercontent.com/containers/podman/main/contrib/podmanimage/stable/podman-containers.conf /home/user/.config/containers/containers.conf
+ARG _REPO_URL="https://raw.githubusercontent.com/containers/podman/main/contrib/podmanimage/stable"
+ADD $_REPO_URL/containers.conf /etc/containers/containers.conf
+ADD $_REPO_URL/podman-containers.conf /home/user/.config/containers/containers.conf
 
-RUN mkdir -p /home/user/.local/share/containers; chown user:user -R /home/user
+RUN mkdir -p /home/user/.local/share/containers && \
+    chown user:user -R /home/user && \
+    chmod 644 /etc/containers/containers.conf
 
-RUN chmod 644 /etc/containers/containers.conf; sed -i -e 's|^#mount_program|mount_program|g' -e '/additionalimage.*/a "/var/lib/shared",' -e 's|^mountopt[[:space:]]*=.*$|mountopt = "nodev,fsync=0"|g' /etc/containers/storage.conf
-RUN mkdir -p /var/lib/shared/overlay-images /var/lib/shared/overlay-layers /var/lib/shared/vfs-images /var/lib/shared/vfs-layers; touch /var/lib/shared/overlay-images/images.lock; touch /var/lib/shared/overlay-layers/layers.lock; touch /var/lib/shared/vfs-images/images.lock; touch /var/lib/shared/vfs-layers/layers.lock
+RUN sed -e 's|^#mount_program|mount_program|g' \
+        -e '/additionalimage.*/a "/var/lib/shared",' \
+        -e 's|^mountopt[[:space:]]*=.*$|mountopt = "nodev,fsync=0"|g' \
+        /etc/containers/storage.conf
+
+RUN mkdir -p /var/lib/shared/overlay-images \
+        /var/lib/shared/overlay-layers \
+        /var/lib/shared/vfs-images \
+        /var/lib/shared/vfs-layers && \
+    touch /var/lib/shared/overlay-images/images.lock && \
+    touch /var/lib/shared/overlay-layers/layers.lock && \
+    touch /var/lib/shared/vfs-images/images.lock && \
+    touch /var/lib/shared/vfs-layers/layers.lock
+
+VOLUME /var/lib/containers
+VOLUME /home/user/.local/share/containers
 
 ENV _CONTAINERS_USERNS_CONFIGURED=""
 
@@ -34,9 +51,6 @@ RUN apt-get update -y && \
 RUN echo "alias docker=podman" >> /home/user/.bashrc; \
     echo "alias docker-compose=podman-compose" >> /home/user/.bashrc; \
     echo 'export PATH=$PATH:/home/user/.local/bin' >> /home/user/.bashrc
-
-VOLUME /var/lib/containers
-VOLUME /home/user/.local/share/containers
 
 # SSH setup (optional)
 
